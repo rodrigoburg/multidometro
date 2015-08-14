@@ -190,7 +190,7 @@ $('#atualizar').on('click', function () {
     var target = document.getElementById('map-wrapper');
     spiner = new Spinner().spin(target);
     $("#map").css("opacity",0.4);
-    limpa_mapa();
+    setTimeout(limpa_mapa(),10);
     setTimeout(cria_poligonos,10);
 })
 
