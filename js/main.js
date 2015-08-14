@@ -169,9 +169,6 @@ function atualiza_trecho(id_layer) {
                                 fillColor: '#f03',
                                 fillOpacity: 0.7
                             }).addTo(map);
-                            circulo.on({
-                                click: function (e) { mostra_tooltip(e, item[1])}
-                            });
                             contador += 1;
                             poligonos[id_layer].push([d,circulo]);
                         }
