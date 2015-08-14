@@ -15,7 +15,7 @@ function acha_id(geojson) {
 }
 
 function mostra_tooltip(e,d) {
-    if ($(".leaflet-popup-close-button")[0]) $(".leaflet-popup-close-button")[0].click();
+    //if ($(".leaflet-popup-close-button")[0]) $(".leaflet-popup-close-button")[0].click();
 
     var event = e.originalEvent;
     if (d) {
@@ -64,12 +64,6 @@ function style(feature) {
         }
     }
 }
-function onEachFeature(layer) {
-        layer.on({
-            click: mostra_tooltip
-        });
-
-}
 
 function cria_mapa() {
     map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 17});
@@ -86,7 +80,6 @@ function cria_mapa() {
 
     var camada = new L.geoJson();
     camada.addTo(map);
-    map.eachLayer(onEachFeature);
     map.on("click", function () {
         div.css({ opacity:0})
     });
@@ -99,12 +92,15 @@ function cria_mapa() {
         var area_aqui = parseInt(turf.area(d));
         var centroid = turf.centroid(d);
         var marker = L.marker([centroid["geometry"]["coordinates"][1],centroid["geometry"]["coordinates"][0]]).addTo(map);
-        if (id == "Casa") {
-            marker.bindPopup("<b>Trecho "+ d.properties.description +"</b><br/>Clique em cada trecho da Paulista destacado para adicionar manifestantes").openPopup();
-        } else {
-            marker.bindPopup("<b>Trecho "+ d.properties.description +"</b>");
-        }
 
+        marker.on("click",function (e) {
+            mostra_tooltip(e,d);
+        })
+
+        if (id == "Casa") {
+            marker.bindPopup("Clique no balãozinho de cada trecho da Paulista para adicionar manifestantes").openPopup();
+            marker.unbindPopup()
+        }
 
         infos_divisao[id] = {}
         infos_divisao[id]["area"] = area_aqui;
