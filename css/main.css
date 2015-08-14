@@ -28,7 +28,7 @@
     display:inline-block;
 }
 
-.colocadas,.area_total {
+.colocadas,.area_total,.densidade {
     font-weight: bold;
 }
 div.tooltip {

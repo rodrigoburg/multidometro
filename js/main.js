@@ -1,7 +1,7 @@
-var pessoas_por_bola = 40;
+var pessoas_por_bola = 50;
 var tamanho_pessoa = 0.20;
 var raio = tamanho_pessoa*Math.sqrt(pessoas_por_bola);
-var densidade = 0.1; //valor default
+var densidade = 0; //valor default
 var max_tentativas = 5;
 var map, spiner,area;
 var poligonos = {};
@@ -9,14 +9,22 @@ var divisoes_paulista = [];
 var circulos = [];
 var div = $(".tooltip");
 var infos_divisao = {}
+
 function acha_id(geojson) {
     return geojson.properties.description.split(" ")[0]
 }
 
-function mostra_tooltip(e) {
+function mostra_tooltip(e,d) {
+    if ($(".leaflet-popup-close-button")[0]) $(".leaflet-popup-close-button")[0].click();
+
     var event = e.originalEvent;
-    var html = "<p class=titulo_tooltip> Trecho "+e.layer.feature.properties.description+"</p>"
-    var id_layer = acha_id(e.layer.feature)
+    if (d) {
+        var html = "<p class=titulo_tooltip> Trecho "+d.properties.description+"</p>";
+        var id_layer = acha_id(d);
+    } else {
+        var html = "<p class=titulo_tooltip> Trecho "+e.layer.feature.properties.description+"</p>";
+        var id_layer = acha_id(e.layer.feature);
+    }
     html += '<div id="slider-wrapper">' +
         '<input id=slider_'+ id_layer+' type="text" class=slider data-slider-min="0.1" data-slider-max="6" data-slider-step="0.1" data-slider-value="'+infos_divisao[id_layer]["densidade"]+'">' +
         '<span> Pessoas por m2: <span class=sliderval id="SliderVal_'+id_layer+'">'+infos_divisao[id_layer]["densidade"]+'</span></span>' +
@@ -31,28 +39,34 @@ function mostra_tooltip(e) {
         top: event.pageY - 20
     });
     var este_slider = $("#slider_"+id_layer);
-    console.log(este_slider)
     este_slider.slider();
     este_slider.on("slide", function(slideEvt) {
         var valor = slideEvt.value
         if (parseInt($("#SliderVal_"+id_layer).text()) != valor) {
             $("#SliderVal_"+id_layer).text(valor);
-            infos_divisao[id_layer]["densidade"] = parseInt(valor);
+            infos_divisao[id_layer]["densidade"] = parseFloat(valor);
         }
     });
 
 
 }
-
+function style(feature) {
+    if (feature.geometry.type == "Polygon") {
+        return {
+            color:"black",
+            dashArray: '3'
+        }
+    }
+}
 function onEachFeature(layer) {
-
         layer.on({
             click: mostra_tooltip
         });
+
 }
 
 function cria_mapa() {
-    map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 18});
+    map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 17});
     var googleLayer = new L.Google('ROADMAP');
     map.addLayer(googleLayer);
 
@@ -67,15 +81,25 @@ function cria_mapa() {
     var camada = new L.geoJson();
     camada.addTo(map);
     map.eachLayer(onEachFeature);
-    map.on("click", function (){
+    map.on("click", function () {
         div.css({ opacity:0})
-    })
+    });
 
     paulista_geojson.features.forEach(function (d) {
-        camada.addData(d);
+        var teste = camada.addData(d);
+        teste.setStyle(style)
         divisoes_paulista.push([L.polygon(d["geometry"]["coordinates"]),d]);
         var id=acha_id(d);
         var area_aqui = parseInt(turf.area(d));
+        var centroid = turf.centroid(d);
+        var marker = L.marker([centroid["geometry"]["coordinates"][1],centroid["geometry"]["coordinates"][0]]).addTo(map);
+        if (id == "Casa") {
+            marker.bindPopup("<b>Trecho "+ d.properties.description +"</b><br/>Clique em cada trecho da Paulista destacado para adicionar manifestantes").openPopup();
+        } else {
+            marker.bindPopup("<b>Trecho "+ d.properties.description +"</b>");
+        }
+
+
         infos_divisao[id] = {}
         infos_divisao[id]["area"] = area_aqui;
         infos_divisao[id]["densidade"] = densidade;
@@ -127,7 +151,6 @@ function cria_poligonos() {
             pontos["features"].forEach(function (d) {
 
                 if (turf.inside(d, poligono_para_testar)) {
-                //if (true) {
                     var ta_sozinho = true;
 
                     poligonos[j].forEach(function (e) {
@@ -136,20 +159,15 @@ function cria_poligonos() {
                         }
                     })
 
-                    if (j > 0) {
-                        poligonos[j - 1].forEach(function (e) {
-                            if (ta_dentro(d, e)) {
-                                ta_sozinho = false;
-                            }
-                        })
-                    }
-
                     if (ta_sozinho) {
                         var circulo = L.circle(d["geometry"]["coordinates"], raio, {
                             color: 'darkred',
                             fillColor: '#f03',
                             fillOpacity: 0.7
                         }).addTo(map);
+                        circulo.on({
+                            click: function (e) { mostra_tooltip(e, item[1])}
+                        });
                         contador += 1;
                         poligonos[j].push(d);
                         circulos.push(circulo)
@@ -162,10 +180,10 @@ function cria_poligonos() {
         j += 1;
     })
 
+    $("#densidade").html(parseInt(colocados*pessoas_por_bola*10/area)/10);
     $("#colocadas").html(parseInt(colocados*pessoas_por_bola));
     spiner.stop();
     $("#map").css("opacity",1)
-
 }
 
 function limpa_mapa() {
@@ -193,18 +211,5 @@ $('#atualizar').on('click', function () {
     setTimeout(limpa_mapa(),10);
     setTimeout(cria_poligonos,10);
 })
-
-var slider = $("#slider");
-slider.slider()
-slider.on("slide", function(slideEvt) {
-    var valor = slideEvt.value;
-    for (divisao in infos_divisao) {
-        infos_divisao[divisao]["densidade"] = valor;
-    }
-   $(".sliderval").text(valor);
-   densidade = (valor);
-
-});
-
 
 iniciar();
