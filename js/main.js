@@ -1,10 +1,10 @@
 var divisoes_paulista = 80;
-var multidao = 50000;
-var raio_pessoa = 0.2;
-var raio = 2;
-var pontos_por_divisao = (multidao/(raio/raio_pessoa))/divisoes_paulista;
+var pessoas_por_bola = 30;
+var tamanho_pessoa = 0.20;
+var raio = tamanho_pessoa*Math.sqrt(pessoas_por_bola);
 var max_tentativas = 15;
-var map, paulista, poligono,bbox,dist_lat,dist_long;
+var densidade = 3;
+var map, paulista, poligono,bbox,dist_lat,dist_long,area;
 var poligonos = {};
 var circulos = [];
 
@@ -27,24 +27,28 @@ function cria_mapa() {
     // attribution: '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'}).addTo(map);
 
     //CALCULAR AREA DO POLIGONO
-    poligono.push(poligono[0])
-    poligono = turf.polygon([poligono])
-    console.log(turf.area(poligono))
+    poligono.push(poligono[0]);
+    poligono = turf.polygon([poligono]);
+    area = parseInt(turf.area(poligono));
+    $("#area_total").html(area);
 
     bbox = [paulista.getBounds()["_northEast"]["lat"],
         paulista.getBounds()["_northEast"]["lng"],
         paulista.getBounds()["_southWest"]["lat"],
         paulista.getBounds()["_southWest"]["lng"]];
 
-    dist_lat = (bbox[0]-bbox[2])/divisoes_paulista
-    dist_long = (bbox[1]-bbox[3])/divisoes_paulista
+    dist_lat = (bbox[0]-bbox[2])/divisoes_paulista;
+    dist_long = (bbox[1]-bbox[3])/divisoes_paulista;
 
 }
 
 
 function cria_poligonos() {
     var colocados = 0;
+    var multidao = area*densidade;
+    var pontos_por_divisao = (multidao/pessoas_por_bola)/divisoes_paulista;
     for (j = 0;j<divisoes_paulista;j++) {
+        if (colocados*pessoas_por_bola > multidao) break
         poligonos[j] = [];
         var contador = 0;
         var tentativas = 0;
@@ -84,7 +88,7 @@ function cria_poligonos() {
 
                     if (ta_sozinho) {
                         var circulo = L.circle(d["geometry"]["coordinates"], raio, {
-                            color: 'red',
+                            color: 'darkred',
                             fillColor: '#f03',
                             fillOpacity: 0.7
                         }).addTo(map);
@@ -98,8 +102,7 @@ function cria_poligonos() {
         colocados += contador;
 
     }
-    $("#colocadas").html(colocados*(raio/raio_pessoa));
-    console.log("COLOCADOS: "+colocados*(raio/raio_pessoa) +" PESSOAS");
+    $("#colocadas").html(parseInt(colocados*pessoas_por_bola));
 
 }
 
@@ -113,27 +116,26 @@ function ta_dentro(poligono_1,poligono_2) {
     return turf.distance(poligono_1,poligono_2,"kilometers") < (raio/1000);
 }
 
-function pega_valores() {
-    var val_mutidao = $("#multidao").val();
-    var val_raio_pessoa = $("#gordura").val();
-    var val_raio = $("#bola").val();
-    if (val_mutidao) multidao = parseFloat(val_mutidao);
-    if (val_raio_pessoa) raio_pessoa = parseFloat(val_raio_pessoa/100);
-    if (val_raio) raio = parseFloat(val_raio)*raio_pessoa;
-}
-
 function iniciar() {
     cria_mapa();
-    cria_poligonos();
 }
 
 
 //inicia o menu
 $('#atualizar').on('click', function () {
     limpa_mapa();
-    pega_valores();
     cria_poligonos();
 })
+
+var slider = $("#slider");
+slider.slider()
+slider.on("slide", function(slideEvt) {
+    var valor = slideEvt.value
+    if (parseInt($("#SliderVal").text()) != valor) {
+        $("#SliderVal").text(valor);
+        densidade = parseInt(valor);
+    }
+});
 
 
 iniciar();

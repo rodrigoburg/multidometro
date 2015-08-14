@@ -24,11 +24,10 @@
     float:right;
 }
 
-#texto_atualizacao {
+.texto {
     display:inline-block;
-    padding-top: 15px;
 }
 
-#colocadas {
+#colocadas,#area_total {
     font-weight: bold;
 }
