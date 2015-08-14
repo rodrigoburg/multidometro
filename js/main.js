@@ -1,4 +1,4 @@
-var pessoas_por_bola = 50;
+var pessoas_por_bola = 100;
 var tamanho_pessoa = 0.20;
 var raio = tamanho_pessoa*Math.sqrt(pessoas_por_bola);
 var densidade = 0; //valor default
@@ -47,9 +47,15 @@ function mostra_tooltip(e,d) {
             infos_divisao[id_layer]["densidade"] = parseFloat(valor);
         }
     });
-
-
+    este_slider.on("slideStop", function(event) {
+        var target = document.getElementById('map-wrapper');
+        spiner = new Spinner().spin(target);
+        $("#map").css("opacity",0.7);
+        setTimeout(function () {limpa_trecho(id_layer)},10);
+        setTimeout(function () {atualiza_trecho(id_layer)},10);
+    })
 }
+
 function style(feature) {
     if (feature.geometry.type == "Polygon") {
         return {
@@ -112,86 +118,92 @@ function cria_mapa() {
 }
 
 
-function cria_poligonos() {
+function atualiza_trecho(id_layer) {
     var colocados = 0;
     var j = 0;
 
     divisoes_paulista.forEach(function (item) {
         var id = acha_id(item[1])
-        var multidao_aqui = infos_divisao[id]["area"]*infos_divisao[id]["densidade"];
+        if (id == id_layer) {
 
-        var pontos_por_divisao = (multidao_aqui/pessoas_por_bola);
+            var multidao_aqui = infos_divisao[id]["area"]*infos_divisao[id]["densidade"];
 
-        var pedaco_paulista = item[0]
-        var este_poligono = item[1]
-        poligonos[j] = [];
-        var contador = 0;
-        var bbox = [pedaco_paulista.getBounds()["_southWest"]["lng"],
-            pedaco_paulista.getBounds()["_southWest"]["lat"],
-            pedaco_paulista.getBounds()["_northEast"]["lng"],
-            pedaco_paulista.getBounds()["_northEast"]["lat"]];
+            var pontos_por_divisao = (multidao_aqui/pessoas_por_bola);
 
-        //CRIA UM POLIGONO ESTILO GEOJSON SOH PRA ESSE
-        var opa = [[]]
-        este_poligono["geometry"]["coordinates"][0].forEach(function (lat_lng) {
-            var temp = [lat_lng[1],lat_lng[0]];
-            opa[0].push(temp)
-        })
-        var poligono_para_testar = turf.polygon(opa)
+            var pedaco_paulista = item[0]
+            var este_poligono = item[1]
+            poligonos[id_layer] = [];
+            var contador = 0;
+            var bbox = [pedaco_paulista.getBounds()["_southWest"]["lng"],
+                pedaco_paulista.getBounds()["_southWest"]["lat"],
+                pedaco_paulista.getBounds()["_northEast"]["lng"],
+                pedaco_paulista.getBounds()["_northEast"]["lat"]];
+
+            //CRIA UM POLIGONO ESTILO GEOJSON SOH PRA ESSE
+            var opa = [[]]
+            este_poligono["geometry"]["coordinates"][0].forEach(function (lat_lng) {
+                var temp = [lat_lng[1],lat_lng[0]];
+                opa[0].push(temp)
+            })
+            var poligono_para_testar = turf.polygon(opa)
 
 
-        var tentativas = 0;
-        while (contador < pontos_por_divisao) {
-            if (tentativas > max_tentativas) break;
-            tentativas += 1;
-            var pontos = turf.random('points', pontos_por_divisao*2, {
-                bbox: bbox
-            });
+            var tentativas = 0;
+            while (contador < pontos_por_divisao) {
+                if (tentativas > max_tentativas) break;
+                tentativas += 1;
+                var pontos = turf.random('points', pontos_por_divisao*2, {
+                    bbox: bbox
+                });
 
-            pontos["features"].forEach(function (d) {
+                pontos["features"].forEach(function (d) {
 
-                if (turf.inside(d, poligono_para_testar)) {
-                    var ta_sozinho = true;
+                    if (turf.inside(d, poligono_para_testar)) {
+                        var ta_sozinho = true;
 
-                    poligonos[j].forEach(function (e) {
-                        if (ta_dentro(d, e)) {
-                            ta_sozinho = false;
+                        poligonos[id_layer].forEach(function (e) {
+                            if (ta_dentro(d, e[0])) {
+                                ta_sozinho = false;
+                            }
+                        })
+
+                        if (ta_sozinho) {
+                            var circulo = L.circle(d["geometry"]["coordinates"], raio, {
+                                color: 'darkred',
+                                fillColor: '#f03',
+                                fillOpacity: 0.7
+                            }).addTo(map);
+                            circulo.on({
+                                click: function (e) { mostra_tooltip(e, item[1])}
+                            });
+                            contador += 1;
+                            poligonos[id_layer].push([d,circulo]);
                         }
-                    })
-
-                    if (ta_sozinho) {
-                        var circulo = L.circle(d["geometry"]["coordinates"], raio, {
-                            color: 'darkred',
-                            fillColor: '#f03',
-                            fillOpacity: 0.7
-                        }).addTo(map);
-                        circulo.on({
-                            click: function (e) { mostra_tooltip(e, item[1])}
-                        });
-                        contador += 1;
-                        poligonos[j].push(d);
-                        circulos.push(circulo)
                     }
-                }
-            });
+                });
+            }
+            infos_divisao[id]["pop"] = contador*pessoas_por_bola;
+            colocados += contador;
+            j += 1;
         }
-        infos_divisao[id]["pop"] = contador*pessoas_por_bola;
-        colocados += contador;
-        j += 1;
     })
 
-    $("#densidade").html(parseInt(colocados*pessoas_por_bola*10/area)/10);
-    $("#colocadas").html(parseInt(colocados*pessoas_por_bola));
+    var total_pessoas = 0;
+    for (var trecho in infos_divisao) {
+        total_pessoas += infos_divisao[trecho]["pop"]
+    }
+
+    $("#densidade").html(parseInt(total_pessoas*10/area)/10);
+    $("#colocadas").html(parseInt(total_pessoas));
     spiner.stop();
     $("#map").css("opacity",1)
 }
 
-function limpa_mapa() {
-    circulos.forEach(function (d) {
-        map.removeLayer(d)
-    })
-    circulos = [];
-    poligonos = [];
+function limpa_trecho(id_layer) {
+    if (poligonos[id_layer])
+        poligonos[id_layer].forEach(function (d) {
+            map.removeLayer(d[1])
+        })
 }
 
 function ta_dentro(poligono_1,poligono_2) {
@@ -201,15 +213,5 @@ function ta_dentro(poligono_1,poligono_2) {
 function iniciar() {
     cria_mapa();
 }
-
-
-//inicia o menu
-$('#atualizar').on('click', function () {
-    var target = document.getElementById('map-wrapper');
-    spiner = new Spinner().spin(target);
-    $("#map").css("opacity",0.4);
-    setTimeout(limpa_mapa(),10);
-    setTimeout(cria_poligonos,10);
-})
 
 iniciar();
