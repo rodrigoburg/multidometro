@@ -28,6 +28,19 @@
     display:inline-block;
 }
 
-#colocadas,#area_total {
+.colocadas,.area_total {
     font-weight: bold;
+}
+div.tooltip {
+    position: absolute;
+    text-align: left;
+    width: auto;
+    height: auto;
+    margin-left: 20px;
+    font: 14px Arial;
+    background: white;
+    border-radius: 8px;
+    border:2px solid;
+    color:black;
+    line-height: 0.7;
 }

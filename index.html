@@ -22,15 +22,16 @@
      <div id="menu">
          <p class="texto">Densidade geral para toda a área</p>
          <div id="slider-wrapper">
-             <input id="slider" type="text" data-slider-min="1" data-slider-max="7" data-slider-step="1" data-slider-value="3">
-             <span id="CurrentSliderValLabel"> Pessoas por m2: <span id="SliderVal">3</span></span>
+             <input class=slider id="slider" type="text" data-slider-min="0.1" data-slider-max="6" data-slider-step="0.1" data-slider-value="0.1">
+             <span id="CurrentSliderValLabel"> Pessoas por m2: <span class=sliderval id="SliderVal">0.1</span></span>
          </div>
          <div id="text-wrapper">
-             <p class="texto" id="area_poligonos">Área total: <span id="area_total">0</span> m2</p><br/>
-             <p class="texto" id="texto_atualizacao">Pessoas existentes no mapa: <span id="colocadas">0</span></p>
+             <p class="texto" id="area_poligonos">Área total: <span class="area_total" id="area_total">0</span> m2</p><br/>
+             <p class="texto" id="texto_atualizacao">Pessoas existentes no mapa: <span class="colocadas" id="colocadas">0</span></p>
          </div>
-         <button type="button" id="atualizar" class="btn btn-default">Atualizar!</button>
+         <button type="button" id="atualizar" class="btn btn-default">Simular multidão!</button>
      </div>
+     <div class="tooltip"></div>
  </div>
 
  <script src="js/main.js"></script>
