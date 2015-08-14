@@ -3,7 +3,7 @@ var tamanho_pessoa = 0.20;
 var raio = tamanho_pessoa*Math.sqrt(pessoas_por_bola);
 var densidade = 0.1; //valor default
 var max_tentativas = 5;
-var map, dist_lat,dist_long,area;
+var map, spiner,area;
 var poligonos = {};
 var divisoes_paulista = [];
 var circulos = [];
@@ -91,6 +91,7 @@ function cria_mapa() {
 function cria_poligonos() {
     var colocados = 0;
     var j = 0;
+
     divisoes_paulista.forEach(function (item) {
         var id = acha_id(item[1])
         var multidao_aqui = infos_divisao[id]["area"]*infos_divisao[id]["densidade"];
@@ -105,9 +106,6 @@ function cria_poligonos() {
             pedaco_paulista.getBounds()["_southWest"]["lat"],
             pedaco_paulista.getBounds()["_northEast"]["lng"],
             pedaco_paulista.getBounds()["_northEast"]["lat"]];
-
-        dist_lat = (bbox[0]-bbox[2])/divisoes_paulista.length;
-        dist_long = (bbox[1]-bbox[3])/divisoes_paulista.length;
 
         //CRIA UM POLIGONO ESTILO GEOJSON SOH PRA ESSE
         var opa = [[]]
@@ -165,6 +163,8 @@ function cria_poligonos() {
     })
 
     $("#colocadas").html(parseInt(colocados*pessoas_por_bola));
+    spiner.stop();
+    $("#map").css("opacity",1)
 
 }
 
@@ -187,8 +187,11 @@ function iniciar() {
 
 //inicia o menu
 $('#atualizar').on('click', function () {
+    var target = document.getElementById('map-wrapper');
+    spiner = new Spinner().spin(target);
+    $("#map").css("opacity",0.4);
     limpa_mapa();
-    cria_poligonos();
+    setTimeout(cria_poligonos,10);
 })
 
 var slider = $("#slider");
@@ -198,10 +201,9 @@ slider.on("slide", function(slideEvt) {
     for (divisao in infos_divisao) {
         infos_divisao[divisao]["densidade"] = valor;
     }
-    if (parseInt($(".sliderval").text()) != valor) {
-        $(".slidevVal").text(valor);
-        densidade = parseInt(valor);
-    }
+   $(".sliderval").text(valor);
+   densidade = (valor);
+
 });
 
 
