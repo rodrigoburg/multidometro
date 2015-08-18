@@ -44,3 +44,11 @@ div.tooltip {
     color:black;
     line-height: 0.7;
 }
+
+#pronto {
+    position: relative;
+    left: 55px;
+    margin: 0;
+    padding: 3px;
+    margin-top: 5px;
+}

@@ -7,16 +7,16 @@ var map, spiner,area;
 var poligonos = {};
 var divisoes_paulista = [];
 var circulos = [];
+var poligonos_criados = 0;
 var div = $(".tooltip");
 var infos_divisao = {}
+var infos_poligonos = {}
 
 function acha_id(geojson) {
-    return geojson.properties.description.split(" ")[0]
+    return geojson.properties.description.split(" ").join("-")
 }
 
 function mostra_tooltip(e,d) {
-    //if ($(".leaflet-popup-close-button")[0]) $(".leaflet-popup-close-button")[0].click();
-
     var event = e.originalEvent;
     if (d) {
         var html = "<p class=titulo_tooltip> Trecho "+d.properties.description+"</p>";
@@ -41,7 +41,7 @@ function mostra_tooltip(e,d) {
     var este_slider = $("#slider_"+id_layer);
     este_slider.slider();
     este_slider.on("slide", function(slideEvt) {
-        var valor = slideEvt.value
+        var valor = slideEvt.value;
         if (parseInt($("#SliderVal_"+id_layer).text()) != valor) {
             $("#SliderVal_"+id_layer).text(valor);
             infos_divisao[id_layer]["densidade"] = parseFloat(valor);
@@ -65,10 +65,88 @@ function style(feature) {
     }
 }
 
+function adiciona_area(id_desenhado) {
+    var nome = $(id_desenhado).val();
+    var poligono = $(id_desenhado).attr("id");
+    var d = infos_poligonos[poligono][0];
+    var marker = infos_poligonos[poligono][1];
+    marker.closePopup();
+    marker.unbindPopup();
+    d.properties.description = nome;
+
+    var area_aqui = parseInt(turf.area(d));
+
+    divisoes_paulista.push([L.polygon(d["geometry"]["coordinates"]),d]);
+    var id=acha_id(d);
+
+    marker.on("click",function (e) {
+        mostra_tooltip(e,d);
+    })
+
+    infos_divisao[id] = {}
+    infos_divisao[id]["area"] = area_aqui;
+    infos_divisao[id]["densidade"] = densidade;
+    infos_divisao[id]["pop"] = 0;
+
+    area += area_aqui;
+    $("#area_total").html(area);
+
+}
+
 function cria_mapa() {
     map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 17});
     var googleLayer = new L.Google('ROADMAP');
     map.addLayer(googleLayer);
+
+    drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems
+        },
+        draw: {
+            position: 'topleft',
+
+            polyline: false,
+            polygon: {
+                allowIntersection: false, // Restricts shapes to simple polygons
+                drawError: {
+                    color: '#e1e100', // Color the shape will turn when intersects
+                    message: '<strong>Ops!<strong> Tente desenhar um polígono fechado!', // Message that will show when intersect
+                    showArea: true
+                },
+                shapeOptions: {
+                    color: '#bada55'
+                }
+            },
+            circle: false,
+            marker: false,
+            rectangle:false
+        }
+    });
+
+    map.addControl(drawControl);
+
+    map.on('draw:created', function (e) {
+        poligonos_criados+= 1;
+        var layer = e.layer;
+        layer.setStyle(style)
+
+        var geojson = layer.toGeoJSON();
+        var centroid = turf.centroid(geojson);
+        var marker = L.marker([centroid["geometry"]["coordinates"][1],centroid["geometry"]["coordinates"][0]]).addTo(map);
+        var opcoes = {
+            "keepInView":true,
+            "closeButton":false,
+            "closeOnClick":false
+        }
+        marker.bindPopup('<input style=width:160px id=poligono'+poligonos_criados+" value='Dê um nome para esta área' ></input></br><button id=pronto onclick=adiciona_area(poligono"+poligonos_criados+")>Pronto</button>",opcoes).openPopup();
+
+        infos_poligonos["poligono"+poligonos_criados] = [geojson,marker]
+        drawnItems.addLayer(layer);
+    });
+
 
     var paulista_geojson = {"type": "FeatureCollection", "features": [
         {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-46.663004,-23.55595],[-46.662865,-23.556083],[-46.662717,-23.556207],[-46.662669,-23.556284],[-46.66246,-23.556478],[-46.662272,-23.556638],[-46.662286,-23.556673],[-46.662329,-23.556705],[-46.662232,-23.556791],[-46.662178,-23.556744],[-46.662141,-23.556719],[-46.662063,-23.556769],[-46.661953,-23.556874],[-46.661696,-23.557086],[-46.661341,-23.557383],[-46.660422,-23.558212],[-46.660475,-23.558273],[-46.660429,-23.558315],[-46.66003,-23.557951],[-46.660078,-23.557912],[-46.660134,-23.557966],[-46.66095,-23.55727],[-46.660883,-23.557214],[-46.660995,-23.557128],[-46.66106,-23.557182],[-46.661548,-23.55671],[-46.661822,-23.556456],[-46.661712,-23.556341],[-46.661789,-23.55626],[-46.66191,-23.556353],[-46.662489,-23.555851],[-46.662701,-23.555662],[-46.663004,-23.55595]]]},"properties":{"name":"Trecho 1","description":"Até Augusta","timestamp":null,"begin":null,"_end":null,"altitudemode":null,"tessellate":-1,"extrude":-1,"visibility":-1,"draworder":null,"icon":null,"cartodb_id":1,"created_at":"2015-08-14T00:57:45Z","updated_at":"2015-08-14T00:57:45Z"}},
