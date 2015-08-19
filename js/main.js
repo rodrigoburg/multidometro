@@ -10,6 +10,7 @@ var circulos = [];
 var poligonos_criados = 0;
 var div = $(".tooltip");
 var infos_divisao = {}
+var traduz_id = {}
 var infos_poligonos = {}
 
 function acha_id(geojson) {
@@ -30,9 +31,10 @@ function mostra_tooltip(e,d) {
         '<span> Pessoas por m2: <span class=sliderval id="SliderVal_'+id_layer+'">'+infos_divisao[id_layer]["densidade"]+'</span></span>' +
         '</div>' +
         '<p class="texto" id="area_poligonos_'+ id_layer+'">Área desta divisão da Paulista: <span class="area_total">'+infos_divisao[id_layer]["area"]+'</span> m2</p><br/>' +
-        '<p class="texto" id="texto_atualizacao_'+ id_layer+'">Pessoas existentes nesta area: <span class="colocadas">'+infos_divisao[id_layer]["pop"]+'</span></p>'
+        '<p class="texto" id="texto_atualizacao_'+ id_layer+'">Pessoas existentes nesta area: <span class="colocadas" id="colocadas_'+id_layer+'">'+infos_divisao[id_layer]["pop"]+'</span></p>'
 
-    div.html(html)
+    div.html(html);
+    div.show();
     div.css({
         opacity: 1,
         left: event.pageX - 15,
@@ -87,20 +89,16 @@ function adiciona_area(id_desenhado) {
     infos_divisao[id]["area"] = area_aqui;
     infos_divisao[id]["densidade"] = densidade;
     infos_divisao[id]["pop"] = 0;
+    infos_divisao[id]["marcador"] = marker;
+
+    traduz_id["poligono"+poligonos_criados] = id;
 
     area += area_aqui;
     $("#area_total").html(area);
 
 }
 
-function cria_mapa() {
-    map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 17});
-    var googleLayer = new L.Google('ROADMAP');
-    map.addLayer(googleLayer);
-
-    drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
+function adiciona_draw() {
     var drawControl = new L.Control.Draw({
         edit: {
             featureGroup: drawnItems
@@ -117,7 +115,8 @@ function cria_mapa() {
                     showArea: true
                 },
                 shapeOptions: {
-                    color: '#bada55'
+                    color:"black",
+                    dashArray: '3'
                 }
             },
             circle: false,
@@ -131,8 +130,7 @@ function cria_mapa() {
     map.on('draw:created', function (e) {
         poligonos_criados+= 1;
         var layer = e.layer;
-        layer.setStyle(style)
-
+        layer["id"] = "poligono"+poligonos_criados;
         var geojson = layer.toGeoJSON();
         var centroid = turf.centroid(geojson);
         var marker = L.marker([centroid["geometry"]["coordinates"][1],centroid["geometry"]["coordinates"][0]]).addTo(map);
@@ -147,6 +145,25 @@ function cria_mapa() {
         drawnItems.addLayer(layer);
     });
 
+    map.on('draw:deleted', function (e) {
+        var layers = e.layers;
+        layers.eachLayer(function (layer) {
+            map.removeLayer(infos_divisao[traduz_id[layer["id"]]]["marcador"])
+
+        });
+    });
+
+}
+
+function cria_mapa() {
+    map = new L.Map('map', {center: new L.LatLng(-23.562788, -46.654808), zoom: 17});
+    var googleLayer = new L.Google('ROADMAP');
+    map.addLayer(googleLayer);
+
+    drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    adiciona_draw();
 
     var paulista_geojson = {"type": "FeatureCollection", "features": [
         {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-46.663004,-23.55595],[-46.662865,-23.556083],[-46.662717,-23.556207],[-46.662669,-23.556284],[-46.66246,-23.556478],[-46.662272,-23.556638],[-46.662286,-23.556673],[-46.662329,-23.556705],[-46.662232,-23.556791],[-46.662178,-23.556744],[-46.662141,-23.556719],[-46.662063,-23.556769],[-46.661953,-23.556874],[-46.661696,-23.557086],[-46.661341,-23.557383],[-46.660422,-23.558212],[-46.660475,-23.558273],[-46.660429,-23.558315],[-46.66003,-23.557951],[-46.660078,-23.557912],[-46.660134,-23.557966],[-46.66095,-23.55727],[-46.660883,-23.557214],[-46.660995,-23.557128],[-46.66106,-23.557182],[-46.661548,-23.55671],[-46.661822,-23.556456],[-46.661712,-23.556341],[-46.661789,-23.55626],[-46.66191,-23.556353],[-46.662489,-23.555851],[-46.662701,-23.555662],[-46.663004,-23.55595]]]},"properties":{"name":"Trecho 1","description":"Até Augusta","timestamp":null,"begin":null,"_end":null,"altitudemode":null,"tessellate":-1,"extrude":-1,"visibility":-1,"draworder":null,"icon":null,"cartodb_id":1,"created_at":"2015-08-14T00:57:45Z","updated_at":"2015-08-14T00:57:45Z"}},
@@ -157,9 +174,9 @@ function cria_mapa() {
     ]};
 
     var camada = new L.geoJson();
-    camada.addTo(map);
+    drawnItems.addLayer(camada);
     map.on("click", function () {
-        div.css({ opacity:0})
+        div.hide()
     });
 
     paulista_geojson.features.forEach(function (d) {
@@ -184,6 +201,8 @@ function cria_mapa() {
         infos_divisao[id]["area"] = area_aqui;
         infos_divisao[id]["densidade"] = densidade;
         infos_divisao[id]["pop"] = 0;
+        infos_divisao[id]["marcador"] = marker;
+
 
     });
 
@@ -197,15 +216,14 @@ function atualiza_trecho(id_layer) {
     var j = 0;
 
     divisoes_paulista.forEach(function (item) {
-        var id = acha_id(item[1])
+        var id = acha_id(item[1]);
         if (id == id_layer) {
 
             var multidao_aqui = infos_divisao[id]["area"]*infos_divisao[id]["densidade"];
 
             var pontos_por_divisao = (multidao_aqui/pessoas_por_bola);
 
-            var pedaco_paulista = item[0]
-            var este_poligono = item[1]
+            var pedaco_paulista = item[0];
             poligonos[id_layer] = [];
             var contador = 0;
             var bbox = [pedaco_paulista.getBounds()["_southWest"]["lng"],
@@ -213,14 +231,7 @@ function atualiza_trecho(id_layer) {
                 pedaco_paulista.getBounds()["_northEast"]["lng"],
                 pedaco_paulista.getBounds()["_northEast"]["lat"]];
 
-            //CRIA UM POLIGONO ESTILO GEOJSON SOH PRA ESSE
-            var opa = [[]]
-            este_poligono["geometry"]["coordinates"][0].forEach(function (lat_lng) {
-                var temp = [lat_lng[1],lat_lng[0]];
-                opa[0].push(temp)
-            })
-            var poligono_para_testar = turf.polygon(opa)
-
+            var poligono_para_testar = pedaco_paulista.toGeoJSON();
 
             var tentativas = 0;
             while (contador < pontos_por_divisao) {
@@ -257,13 +268,14 @@ function atualiza_trecho(id_layer) {
             colocados += contador;
             j += 1;
         }
-    })
+    });
 
     var total_pessoas = 0;
     for (var trecho in infos_divisao) {
         total_pessoas += infos_divisao[trecho]["pop"]
     }
 
+    $("#colocadas_"+id_layer).html(infos_divisao[id_layer]["pop"])
     $("#densidade").html(parseInt(total_pessoas*10/area)/10);
     $("#colocadas").html(parseInt(total_pessoas));
     spiner.stop();
