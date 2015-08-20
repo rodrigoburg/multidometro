@@ -1,5 +1,5 @@
-var pessoas_por_bola = 100;
-var tamanho_pessoa = 0.20;
+var pessoas_por_bola = 10;
+var tamanho_pessoa = 0.25;
 var raio = tamanho_pessoa*Math.sqrt(pessoas_por_bola);
 var densidade = 0; //valor default
 var max_tentativas = 5;
@@ -27,7 +27,7 @@ function mostra_tooltip(e,d) {
         var id_layer = acha_id(e.layer.feature);
     }
     html += '<div id="slider-wrapper">' +
-        '<input id=slider_'+ id_layer+' type="text" class=slider data-slider-min="0.1" data-slider-max="6" data-slider-step="0.1" data-slider-value="'+infos_divisao[id_layer]["densidade"]+'">' +
+        '<input id=slider_'+ id_layer+' type="text" class=slider data-slider-min="0.1" data-slider-max="5" data-slider-step="0.1" data-slider-value="'+infos_divisao[id_layer]["densidade"]+'">' +
         '<span> Pessoas por m2: <span class=sliderval id="SliderVal_'+id_layer+'">'+infos_divisao[id_layer]["densidade"]+'</span></span>' +
         '</div>' +
         '<p class="texto" id="area_poligonos_'+ id_layer+'">Área desta divisão da Paulista: <span class="area_total">'+infos_divisao[id_layer]["area"]+'</span> m2</p><br/>' +
@@ -256,6 +256,7 @@ function atualiza_trecho(id_layer) {
                         if (ta_sozinho) {
                             var circulo = L.circle(d["geometry"]["coordinates"], raio, {
                                 color: 'darkred',
+                                stroke: false,
                                 fillColor: '#f03',
                                 fillOpacity: 0.7
                             }).addTo(map);
