@@ -12,6 +12,100 @@ var infos_divisao = {}
 var traduz_id = {}
 var infos_poligonos = {}
 
+//tradução dos menus do Leaflet.draw
+L.drawLocal = {
+    draw: {
+        toolbar: {
+            actions: {
+                title: 'Cancelar desenho',
+                text: 'Cancelar'
+            },
+            undo: {
+                title: 'Deletar último ponto desenhado',
+                text: 'Deletar último ponto'
+            },
+            buttons: {
+                polyline: 'Draw a polyline',
+                polygon: 'Desenhar uma área',
+                rectangle: 'Draw a rectangle',
+                circle: 'Draw a circle',
+                marker: 'Draw a marker'
+            }
+        },
+        handlers: {
+            circle: {
+                tooltip: {
+                    start: 'Click and drag to draw circle.'
+                },
+                radius: 'Radius'
+            },
+            marker: {
+                tooltip: {
+                    start: 'Click map to place marker.'
+                }
+            },
+            polygon: {
+                tooltip: {
+                    start: 'Clique para começar a desenhar uma área',
+                    cont: 'Clique para adicionar outro vértice.',
+                    end: 'Clique no primeiro ponto para fechar o desenho.'
+                }
+            },
+            polyline: {
+                error: '<strong>Error:</strong> shape edges cannot cross!',
+                tooltip: {
+                    start: 'Click to start drawing line.',
+                    cont: 'Click to continue drawing line.',
+                    end: 'Click last point to finish line.'
+                }
+            },
+            rectangle: {
+                tooltip: {
+                    start: 'Click and drag to draw rectangle.'
+                }
+            },
+            simpleshape: {
+                tooltip: {
+                    end: 'Release mouse to finish drawing.'
+                }
+            }
+        }
+    },
+    edit: {
+        toolbar: {
+            actions: {
+                save: {
+                    title: 'Confirmar mudanças.',
+                    text: 'Confirmar mudanças'
+                },
+                cancel: {
+                    title: 'Cancelar mudanças.',
+                    text: 'Cancelar'
+                }
+            },
+            buttons: {
+                edit: 'Editar áreas.',
+                editDisabled: 'Sem áreas para se editar.',
+                remove: 'Deletar áreas.',
+                removeDisabled: 'Sem áreas para deletar.'
+            }
+        },
+        handlers: {
+            edit: {
+                tooltip: {
+                    text: 'Arraste pontos para editar uma área.',
+                    subtext: 'Clique em cancelar para descartar mudanças.'
+                }
+            },
+            remove: {
+                tooltip: {
+                    text: 'Clique em uma área para deletá-la'
+                }
+            }
+        }
+    }
+};
+
 function acha_id(geojson) {
     return geojson.properties.description.split(" ").join("-")
 }
@@ -26,7 +120,7 @@ function mostra_tooltip(e,d) {
         var id_layer = acha_id(e.layer.feature);
     }
     html += '<div id="slider-wrapper">' +
-        '<input id=slider_'+ id_layer+' type="text" class=slider data-slider-min="0.1" data-slider-max="5" data-slider-step="0.1" data-slider-value="'+infos_divisao[id_layer]["densidade"]+'">' +
+        '<input id=slider_'+ id_layer+' type="text" class=slider data-slider-min="-0.01" data-slider-max="5" data-slider-step="0.1" data-slider-value="'+infos_divisao[id_layer]["densidade"]+'">' +
         '<span> Pessoas por m2: <span class=sliderval id="SliderVal_'+id_layer+'">'+infos_divisao[id_layer]["densidade"]+'</span></span>' +
         '</div>' +
         '<p class="texto" id="area_poligonos_'+ id_layer+'">Área desta divisão da Paulista: <span class="area_total">'+infos_divisao[id_layer]["area"]+'</span> m2</p><br/>' +
@@ -275,7 +369,6 @@ function atualiza_trecho(id_layer) {
                     });
                 }
             } else { //se tiver mais gente atualmente do que na nova densidade
-                console.log("ei")
                 poligonos[id_layer].every(function (d,index) {
                     if (contador <= pontos_por_divisao) {
                         return false;
@@ -300,13 +393,17 @@ function atualiza_trecho(id_layer) {
 
 function calcula_total() {
     var total_pessoas = 0;
+    var total_area = 0;
     for (var trecho in infos_divisao) {
         total_pessoas += infos_divisao[trecho]["pop"];
+        total_area += infos_divisao[trecho]["area"];
     }
+    area = total_area;
     $("#densidade").html(parseInt(total_pessoas*10/area)/10);
     $("#colocadas").html(parseInt(total_pessoas));
-
+    $("#area_total").html(area);
 }
+
 function limpa_trecho(id_layer) {
     if (poligonos[id_layer])
         poligonos[id_layer].forEach(function (d) {
