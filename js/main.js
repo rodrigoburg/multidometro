@@ -6,7 +6,6 @@ var max_tentativas = 5;
 var map, spiner,area;
 var poligonos = {};
 var divisoes_paulista = [];
-var circulos = [];
 var poligonos_criados = 0;
 var div = $(".tooltip");
 var infos_divisao = {}
@@ -53,8 +52,11 @@ function mostra_tooltip(e,d) {
         var target = document.getElementById('map-wrapper');
         spiner = new Spinner().spin(target);
         $("#map").css("opacity",0.7);
-        setTimeout(function () {limpa_trecho(id_layer)},10);
-        setTimeout(function () {atualiza_trecho(id_layer)},10);
+        if (infos_divisao[id_layer]["densidade"] == 0) {
+            setTimeout(function () {limpa_trecho(id_layer)},10);
+        } else {
+            setTimeout(function () {atualiza_trecho(id_layer)},20);
+        }
     })
 }
 
@@ -151,6 +153,8 @@ function adiciona_draw() {
             var id_layer = traduz_id[layer["id"]];
             map.removeLayer(infos_divisao[id_layer]["marcador"]);
             limpa_trecho(id_layer);
+            delete infos_divisao[id_layer];
+            calcula_total();
         });
     });
 
@@ -211,22 +215,19 @@ function cria_mapa() {
     $("#area_total").html(area);
 }
 
-
 function atualiza_trecho(id_layer) {
-    var colocados = 0;
-    var j = 0;
-
     divisoes_paulista.forEach(function (item) {
         var id = acha_id(item[1]);
         if (id == id_layer) {
 
             var multidao_aqui = infos_divisao[id]["area"]*infos_divisao[id]["densidade"];
+            var multidao_existente = infos_divisao[id]["pop"];
 
             var pontos_por_divisao = (multidao_aqui/pessoas_por_bola);
 
-            var pedaco_paulista = item[0];
-            poligonos[id_layer] = [];
             var contador = 0;
+
+            var pedaco_paulista = item[0];
             var bbox = [pedaco_paulista.getBounds()["_southWest"]["lng"],
                 pedaco_paulista.getBounds()["_southWest"]["lat"],
                 pedaco_paulista.getBounds()["_northEast"]["lng"],
@@ -234,61 +235,84 @@ function atualiza_trecho(id_layer) {
 
             var poligono_para_testar = pedaco_paulista.toGeoJSON();
 
-            var tentativas = 0;
-            while (contador < pontos_por_divisao) {
-                if (tentativas > max_tentativas) break;
-                tentativas += 1;
-                var pontos = turf.random('points', pontos_por_divisao*2, {
-                    bbox: bbox
-                });
+            if (poligonos[id_layer])
+                contador = poligonos[id_layer].length;
+            else
+                poligonos[id_layer] = [];
 
-                pontos["features"].forEach(function (d) {
+            if (multidao_aqui > multidao_existente) {
+                var tentativas = 0;
+                while (contador < pontos_por_divisao) {
+                    if (tentativas > max_tentativas) break;
+                    tentativas += 1;
+                    var pontos = turf.random('points', pontos_por_divisao*2, {
+                        bbox: bbox
+                    });
 
-                    if (turf.inside(d, poligono_para_testar)) {
-                        var ta_sozinho = true;
+                    pontos["features"].forEach(function (d) {
 
-                        poligonos[id_layer].forEach(function (e) {
-                            if (ta_dentro(d, e[0])) {
-                                ta_sozinho = false;
-                            }
-                        })
+                        if (turf.inside(d, poligono_para_testar)) {
+                            /*
+                            var ta_sozinho = true;
 
-                        if (ta_sozinho) {
-                            var circulo = L.circle(d["geometry"]["coordinates"], raio, {
-                                color: 'darkred',
-                                stroke: false,
-                                fillColor: '#f03',
-                                fillOpacity: 0.7
-                            }).addTo(map);
-                            contador += 1;
-                            poligonos[id_layer].push([d,circulo]);
+                            poligonos[id_layer].forEach(function (e) {
+                                if (ta_dentro(d, e[0])) {
+                                    ta_sozinho = false;
+                                }
+                            })
+
+                            if (ta_sozinho) {*/
+                                var circulo = L.circle(d["geometry"]["coordinates"], raio, {
+                                    color: 'darkred',
+                                    stroke: false,
+                                    fillColor: '#f03',
+                                    fillOpacity: 0.7
+                                }).addTo(map);
+                                contador += 1;
+                                poligonos[id_layer].push([d,circulo]);
+                            //}
                         }
+                    });
+                }
+            } else { //se tiver mais gente atualmente do que na nova densidade
+                console.log("ei")
+                poligonos[id_layer].every(function (d,index) {
+                    if (contador <= pontos_por_divisao) {
+                        return false;
                     }
+                    map.removeLayer(d[1]);
+                    poligonos[id_layer].splice(index, 1);
+                    contador -= 1;
+                    return true;
                 });
             }
+
             infos_divisao[id]["pop"] = contador*pessoas_por_bola;
-            colocados += contador;
-            j += 1;
+
+            calcula_total();
+            $("#colocadas_"+id_layer).html(infos_divisao[id_layer]["pop"]);
+            spiner.stop();
+            $("#map").css("opacity",1);
         }
     });
 
-    var total_pessoas = 0;
-    for (var trecho in infos_divisao) {
-        total_pessoas += infos_divisao[trecho]["pop"]
-    }
-
-    $("#colocadas_"+id_layer).html(infos_divisao[id_layer]["pop"])
-    $("#densidade").html(parseInt(total_pessoas*10/area)/10);
-    $("#colocadas").html(parseInt(total_pessoas));
-    spiner.stop();
-    $("#map").css("opacity",1)
 }
 
+function calcula_total() {
+    var total_pessoas = 0;
+    for (var trecho in infos_divisao) {
+        total_pessoas += infos_divisao[trecho]["pop"];
+    }
+    $("#densidade").html(parseInt(total_pessoas*10/area)/10);
+    $("#colocadas").html(parseInt(total_pessoas));
+
+}
 function limpa_trecho(id_layer) {
     if (poligonos[id_layer])
         poligonos[id_layer].forEach(function (d) {
             map.removeLayer(d[1])
-        })
+        });
+    poligonos[id_layer] = [];
 }
 
 function ta_dentro(poligono_1,poligono_2) {
